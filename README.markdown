@@ -22,7 +22,7 @@ It requires that you already have some kind of user object in your application, 
     <li><a href="#models">Models</a></li>
     <li><a href="#authorizers">Authorizers</a>
     <ul>
-      <li><a href="#default_strategies">Default strategies</a></li>
+      <li><a href="#default_methods">Default methods</a></li>
       <li><a href="#testing_authorizers">Testing Authorizers</a></li>
       <li><a href="#custom_authorizers">Custom Authorizers</a></li>
     </ul></li>
@@ -151,8 +151,7 @@ These are where your actual authorization logic goes. Here's how it works:
 - Instance methods answer questions about model instances, like "can this user update this **particular** widget?" (Within an instance method, you can get the model instance with `resource`).
   - Any instance method you don't define (for example, if you didn't make a `def deletable_by?(user)`) will fall back to the corresponding class method. In other words, if you haven't said whether a user can update **this particular** widget, we'll decide by checking whether they can update **any** widget.
 - Class methods answer questions about model classes, like "is it **ever** permissible for this user to update a Widget?"
-  - Any class method you don't define (for example, if you didn't make a `def self.updatable_by?(user)`) will call that authorizer's `default` method.
-  - The inherited `default` method calls a [default strategy](#default_strategies) proc (**NOTE**: this will be removed in version 2.0).
+  - Any class method you don't define (for example, if you didn't make a `def self.updatable_by?(user)`) will call that authorizer's `default` method
 
 For example:
 
@@ -171,27 +170,32 @@ class ScheduleAuthorizer < Authority::Authorizer
 end
 ```
 
-As you can see, you can specify different logic for every method on every model, if necessary. On the other extreme, you could simply supply a [default strategy](#default_strategies) that covers all your use cases.
+As you can see, you can specify different logic for every method on every model, if necessary. On the other extreme, you could simply supply a [default method](#default_methods) that covers all your use cases.
 
-<a name="default_strategies">
+<a name="default_methods">
 #### Default Strategies
 
-Any class method you don't define on an authorizer will call the `default` method on that authorizer. If you don't define **that**, the inherited `default` method from `Authority::Authorizer` will call your configured default strategy proc (**NOTE:** this proc will be removed in version 2.0; defining a `default` method is a more standard OOP approach.)
+Any class method you don't define on an authorizer will call the `default` method on that authorizer. This method is defined on `Authority::Authorizer` to simply return false. This is a 'whitelisting' approach; any permission you haven't specified (which falls back to the default method) is considered forbidden.
 
-The **default** default strategy proc simply returns `false`, meaning that everything is forbidden. This whitelisting approach will keep you from accidentally allowing things you didn't intend. 
-
-You can configure a different default strategy. For example, you might want one that looks up permissions in your database:
+You can override this method in your `ApplicationAuthorizer` and/or per authorizer. For example, you might want one that looks up permissions in your database:
 
 ```ruby
-# In config/initializers/authority.rb
-# Example args: :creatable, AdminAuthorizer, user
-config.default_strategy = Proc.new do |able, authorizer, user|
-  # Does the user have any of the roles which give this permission?
-  (roles_which_grant(able, authorizer) & user.roles).any?
+# app/authorizers/application_authorizer.rb
+class ApplicationAuthorizer < Authority::Authorizer
+  def self.default
+    # Does the user have any of the roles which give this permission?
+    (roles_which_grant(able, authorizer) & user.roles).any?
+  end
+  
+  protected
+  def roles_with_grant(able, authorizer)
+    # Look these up somewhere
+    ...
+  end
 end
 ```
 
-If your system is uniform enough, **this strategy alone might handle all the logic you need**.
+If your system is uniform enough, **this method alone might handle all the logic you need**.
 
 <a name="testing_authorizers">
 #### Testing Authorizers

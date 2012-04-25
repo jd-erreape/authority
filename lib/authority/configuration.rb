@@ -3,13 +3,9 @@ module Authority
 
     # Has default settings, overrideable in the initializer.
 
-    attr_accessor :default_strategy, :abilities, :controller_action_map, :user_method, :security_violation_handler, :logger
+    attr_accessor :abilities, :controller_action_map, :user_method, :security_violation_handler, :logger
 
     def initialize
-      @default_strategy = Proc.new do |able, authorizer, user|
-        false
-      end
-
 
       @abilities = {
         :create => 'creatable',

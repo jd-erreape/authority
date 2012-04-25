@@ -14,7 +14,7 @@ module Authority
     # (but let the user change that)
     included do
       class_attribute :authorizer_name
-      self.authorizer_name = "#{name}Authorizer"
+      self.authorizer_name = "ApplicationAuthorizer"
     end
 
     module ClassMethods
