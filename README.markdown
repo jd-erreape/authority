@@ -2,7 +2,7 @@
 
 Authority helps you authorize actions in your Rails app. It's **ORM-neutral** and has very little fancy syntax; just group your models under one or more Authorizer classes and write plain Ruby methods on them.
 
-Authority will work fine with a standalone app or a single sign-on system. You can check roles in a database or permissions in a YAML file. It doesn't care! What it **does** do is give you an easy way to organize your logic, define a default strategy, and handle unauthorized actions.
+Authority will work fine with a standalone app or a single sign-on system. You can check roles in a database or permissions in a YAML file. It doesn't care! What it **does** do is give you an easy way to organize your logic and handle unauthorized actions.
 
 It requires that you already have some kind of user object in your application, accessible from all controllers and views via a method like `current_user` (configurable).
 
@@ -24,7 +24,6 @@ It requires that you already have some kind of user object in your application, 
     <ul>
       <li><a href="#default_methods">Default methods</a></li>
       <li><a href="#testing_authorizers">Testing Authorizers</a></li>
-      <li><a href="#custom_authorizers">Custom Authorizers</a></li>
     </ul></li>
     <li><a href="#controllers">Controllers</a></li>
     <li><a href="#views">Views</a></li>
@@ -177,23 +176,30 @@ end
 As you can see, you can specify different logic for every method on every model, if necessary. On the other extreme, you could simply supply a [default method](#default_methods) that covers all your use cases.
 
 <a name="default_methods">
-#### Default Strategies
+#### Default Methods
 
 Any class method you don't define on an authorizer will call the `default` method on that authorizer. This method is defined on `Authority::Authorizer` to simply return false. This is a 'whitelisting' approach; any permission you haven't specified (which falls back to the default method) is considered forbidden.
 
-You can override this method in your `ApplicationAuthorizer` and/or per authorizer. For example, you might want one that looks up permissions in your database:
+You can override this method in your `ApplicationAuthorizer` and/or per authorizer. For example, you might want one that looks up the user's roles and correlates them with permissions:
 
 ```ruby
 # app/authorizers/application_authorizer.rb
 class ApplicationAuthorizer < Authority::Authorizer
-  def self.default
-    # Does the user have any of the roles which give this permission?
-    (roles_which_grant(able, authorizer) & user.roles).any?
+
+  # Example call: `default(:creatable, current_user)`
+  def self.default(able, user)
+    user.has_role_granting?(able) || user.is_admin?
   end
   
   protected
-  def roles_with_grant(able, authorizer)
-    # Look these up somewhere
+
+  def has_role_granting(able)
+    # Does the user have any of the roles which give this permission?
+    (roles_which_grant(able) & user.roles).any?
+  end
+
+  def roles_which_grant(able)
+    # Look up roles for the current authorizer and `able`
     ...
   end
 end
@@ -232,7 +238,11 @@ describe AdminAuthorizer do
       @admin_resource_instance = mock_admin_resource
     end
 
-    it "should not allow users to delete" do
+    it "should let admins delete" do
+      @admin_resource_instance.authorizer.should be_deletable_by(@admin)
+    end
+
+    it "should not let users delete" do
       @admin_resource_instance.authorizer.should_not be_deletable_by(@user)
     end
 
@@ -240,31 +250,6 @@ describe AdminAuthorizer do
 
 end
 ```
-
-<a name="custom_authorizers">
-#### Custom Authorizers
-
-If you want to customize your authorizers even further - for example, maybe you want them all to have a method like `has_permission?(user, permission_name)` - just use normal Ruby inheritance. For example, add your own parent class, like this:
-
-```ruby
-# lib/my_app/authorizer.rb
-module MyApp
-  class Authorizer < Authority::Authorizer
-  
-    def self.has_permission(user, permission_name)
-      # look that up somewhere
-    end
-
-  end
-end
-
-#app/authorizers/badger_authorizer.rb
-class BadgerAuthorizer < MyApp::Authorizer
-  # contents
-end
-```
-
-If you decide to place your custom class in `lib` as shown above (as opposed to putting it in `app`), you should require it at the bottom of `config/initializers/authority.rb`.
 
 <a name="controllers">
 ### Controllers
