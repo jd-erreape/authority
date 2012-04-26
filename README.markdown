@@ -55,9 +55,11 @@ The goals of Authority are:
 
 Authority encapsulates all authorization logic in `Authorizer` classes. Want to do something with a model? **Ask its authorizer**.
 
-Every model starts out assuming that its authorizer is `ApplicationAuthorizer`, but you can specify another one using the model's `authorizer_name=` method. 
+Models that have the same authorization rules should use the same authorizer. In other words, if you would write the exact same methods on two models to determine who can create them, who can edit them, etc, then they should use the same authorizer.
 
-From there, just use inheritance to set up your permission strategy. For example:
+Every model starts out assuming that its authorizer is `ApplicationAuthorizer`, but you can specify another one using the model's `authorizer_name=` method. Authorizers are just classes, so you can use any inheritance pattern you like.
+
+Some example groupings:
 
          Simplest case                Logical groups                                 Most granular 
 
@@ -73,19 +75,19 @@ From there, just use inheritance to set up your permission strategy. For example
 
 The authorization process generally flows like this:
 
-                   current_user.can_create?(Moose)                   # You ask this question, and the user
+                   current_user.can_create?(Article)                 # You ask this question, and the user
                                +                                     # automatically asks the model...
                                |
                                v
-                   Moose.creatable_by?(current_user)                 # The model automatically asks
+                 Article.creatable_by?(current_user)                 # The model automatically asks
                                +                                     # its authorizer...
                                |
                                v
-               BeastAuthorizer.creatable_by?(current_user)           # *You define this method.*
+               AdminAuthorizer.creatable_by?(current_user)           # *You define this method.*
                                +                                     # If you don't, the inherited one
                                |                                     # calls `default`...
                                v
-        BeastAuthorizer.default(:creatable, current_user)            # *You define this method.* If you don't,
+        AdminAuthorizer.default(:creatable, current_user)            # *You define this method.* If you don't,
                                                                      # the inherited one from
                                                                      # Authority::Authorizer just returns false.
 
