@@ -154,7 +154,7 @@ These are where your actual authorization logic goes. Here's how it works:
 - Instance methods answer questions about model instances, like "can this user update this **particular** widget?" (Within an instance method, you can get the model instance with `resource`).
   - Any instance method you don't define (for example, if you didn't make a `def deletable_by?(user)`) will fall back to the corresponding class method. In other words, if you haven't said whether a user can update **this particular** widget, we'll decide by checking whether they can update **any** widget.
 - Class methods answer questions about model classes, like "is it **ever** permissible for this user to update a Widget?"
-  - Any class method you don't define (for example, if you didn't make a `def self.updatable_by?(user)`) will call that authorizer's `default` method
+  - Any class method you don't define (for example, if you didn't make a `def self.updatable_by?(user)`) will call that authorizer's `default` method.
 
 For example:
 
@@ -171,6 +171,8 @@ class ScheduleAuthorizer < ApplicationAuthorizer
     resource.in_future? && user.manager? && resource.department == user.department
   end
 end
+
+ScheduleAuthorizer.updatable_by?(user) #=> undefined; calls `ScheduleAuthorizer.default(:updatable, user)`
 ```
 
 As you can see, you can specify different logic for every method on every model, if necessary. On the other extreme, you could simply supply a [default method](#default_methods) that covers all your use cases.
