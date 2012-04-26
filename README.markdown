@@ -190,12 +190,12 @@ class ApplicationAuthorizer < Authority::Authorizer
 
   # Example call: `default(:creatable, current_user)`
   def self.default(able, user)
-    user.has_role_granting?(able) || user.is_admin?
+    has_role_granting?(user, able) || user.admin?
   end
   
   protected
 
-  def has_role_granting(able)
+  def has_role_granting(user, able)
     # Does the user have any of the roles which give this permission?
     (roles_which_grant(able) & user.roles).any?
   end
