@@ -55,23 +55,23 @@ The goals of Authority are:
 
 Authority encapsulates all authorization logic in `Authorizer` classes. Want to do something with a model? **Ask its authorizer**.
 
-You can group models under authorizers in any way you wish. For example:
+Every model starts out assuming that its authorizer is `ApplicationAuthorizer`, but you can specify another one using the model's `authorizer_name=` method. 
 
+From there, just use inheritance to set up your permission strategy. For example:
 
          Simplest case                Logical groups                                 Most granular 
 
-        default_strategy              default_strategy                              default_strategy
+      ApplicationAuthorizer        ApplicationAuthorizer                         ApplicationAuthorizer
                +                             +                                             +
                |                    +--------+-------+                 +-------------------+-------------------+
-               +                    +                +                 +                   +                   +
-       EverythingAuthorizer  BasicAuthorizer   AdminAuthorizer  CommentAuthorizer  ArticleAuthorizer  EditionAuthorizer
-               +                    +                +                 +                   +                   +
+               |                    +                +                 +                   +                   +
+               |             BasicAuthorizer   AdminAuthorizer  CommentAuthorizer  ArticleAuthorizer  EditionAuthorizer
+               |                    +                +                 +                   +                   +
        +-------+-------+            +-+       +------+                 |                   |                   |
        +       +       +              +       +      +                 +                   +                   +
     Comment Article Edition        Comment Article Edition          Comment             Article             Edition
 
-
-The process generally flows like this:
+The authorization process generally flows like this:
 
                    current_user.can_create?(Moose)                   # You ask this question, and the user
                                +                                     # automatically asks the model...
@@ -81,11 +81,13 @@ The process generally flows like this:
                                +                                     # its authorizer...
                                |
                                v
-               MooseAuthorizer.creatable_by?(current_user)           # *You define this method.*
-                               +                                     # If it's missing, the default
-                               |                                     # strategy is used...
+               BeastAuthorizer.creatable_by?(current_user)           # *You define this method.*
+                               +                                     # If you don't, the inherited one
+                               |                                     # calls `default`...
                                v
-    config.default_strategy.call(:creatable, MooseAuthorizer, user)  # *You define this strategy.*
+        BeastAuthorizer.default(:creatable, current_user)            # *You define this method.* If you don't,
+                                                                     # the inherited one from
+                                                                     # Authority::Authorizer just returns false.
 
 If the answer is `false` and the original caller was a controller, this is treated as a `SecurityViolation`. If it was a view, maybe you just don't show a link.
 
@@ -135,7 +137,7 @@ class Article
   # Adds `creatable_by?(user)`, etc
   include Authority::Abilities
 
-  # Without this, 'ArticleAuthorizer' is assumed
+  # Without this, 'ApplicationAuthorizer' is assumed
   self.authorizer_name = 'AdminAuthorizer'
   ...
 end
@@ -144,7 +146,7 @@ end
 <a name="authorizers">
 ### Authorizers
 
-Add your authorizers under `app/authorizers`, subclassing `Authority::Authorizer`.
+Add your authorizers under `app/authorizers`, subclassing the generated `ApplicationAuthorizer`.
 
 These are where your actual authorization logic goes. Here's how it works:
 
@@ -157,7 +159,7 @@ For example:
 
 ```ruby
 # app/authorizers/schedule_authorizer.rb
-class ScheduleAuthorizer < Authority::Authorizer
+class ScheduleAuthorizer < ApplicationAuthorizer
   # Class method: can this user at least sometimes create a Schedule?
   def self.creatable_by?(user)
     user.manager?
