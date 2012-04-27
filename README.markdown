@@ -86,9 +86,10 @@ The authorization process generally flows like this:
                                +                                     # If you don't, the inherited one
                                |                                     # calls `default`...
                                v
-        AdminAuthorizer.default(:creatable, current_user)            # *You define this method.* If you don't,
-                                                                     # the inherited one from
-                                                                     # Authority::Authorizer just returns false.
+        AdminAuthorizer.default(:creatable, current_user)            # *You define this method.* 
+                                                                     # If you don't, the one inherited 
+                                                                     # from Authority::Authorizer just 
+                                                                     # returns false.
 
 If the answer is `false` and the original caller was a controller, this is treated as a `SecurityViolation`. If it was a view, maybe you just don't show a link.
 
@@ -113,7 +114,7 @@ config.abilities =  {
 }
 ```
 
-This option determines what methods are added to your users, models and authorizers. If you need to ask `user.can_deactivate?(Satellite)` and `@satellite.deactivatable_by?(user)`, add those to the hash.
+This option determines what methods are added to your users, models and authorizers. If you need to ask `user.can_deactivate?(Satellite)` and `@satellite.deactivatable_by?(user)`, add `:deactivate => 'deactivatable'` to the hash.
 
 <a name="wiring_it_together">
 ## Wiring It Together
@@ -172,7 +173,8 @@ class ScheduleAuthorizer < ApplicationAuthorizer
   end
 end
 
-ScheduleAuthorizer.updatable_by?(user) #=> undefined; calls `ScheduleAuthorizer.default(:updatable, user)`
+# undefined; calls `ScheduleAuthorizer.default(:updatable, user)`
+ScheduleAuthorizer.updatable_by?(user) 
 ```
 
 As you can see, you can specify different logic for every method on every model, if necessary. On the other extreme, you could simply supply a [default method](#default_methods) that covers all your use cases.
@@ -267,10 +269,10 @@ The relationship between controller actions and abilities - like checking `reada
 class LlamaController < ApplicationController
 
   # Check class-level authorizations before all actions except :create
-  # Before this controller's 'neuter' action, ask whether current_user.can_update?(Llama)
-  authorize_actions_for Llama, :actions => {:neuter => :update}, :except => :create
+  # Also, to authorize this controller's 'neuter' action, ask whether `current_user.can_update?(Llama)`
+  authorize_actions_for Llama, :except => :create, :actions => {:neuter => :update},
   
-  # Before this controller's 'breed' action, ask whether current_user.can_create?(Llama)
+  # To authorize this controller's 'breed' action, ask whether `current_user.can_create?(Llama)`
   authority_action :breed => 'new'
 
   ...
@@ -305,14 +307,15 @@ Anytime a user attempts an unauthorized action, Authority calls whatever control
 - Renders `public/403.html`
 - Logs the violation to whatever logger you configured.
 
-You can specify a different handler like so:
+You can specify a different handler like this:
 
 ```ruby
 # config/initializers/authority.rb
-...
 config.security_violation_handler = :fire_ze_missiles
-...
+```
+Then define the method on your controller:
 
+```ruby
 # app/controllers/application_controller.rb
 class ApplicationController < ActionController::Base
 
